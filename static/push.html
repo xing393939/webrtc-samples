@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>主播端</title>
+    <style>
+        video {
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body>
+<table>
+    <tr>
+        <td>
+            <video id="video" autoplay></video>
+        </td>
+        <td>
+            <div id="log"></div>
+        </td>
+    </tr>
+</table>
+
+<script src="peer.min.js"></script>
+<script>
+    (function () {
+        var log = function (msg) {
+            document.getElementById('log').innerHTML += msg + '<br />';
+        };
+
+        var serverId = (+new Date).toString(36) + '_' + (Math.random().toString()).split('.')[1];
+
+        var peer = new Peer(serverId, {
+            host: 'localhost',
+            port: 9003,
+            path: '/api',
+            config: {
+                'iceServers': [
+                    { url: 'stun:stun.l.google.com:19302' }
+                ]
+            }
+        });
+
+        navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+
+        var constraints = {
+            audio: false,
+            video: true
+        };
+
+        navigator.getUserMedia(constraints, function (stream) {
+            window.stream = stream;
+            log('获取摄像头成功！');
+            log('主播ID（' + serverId + '）...');
+            log('等待连接...');
+            var video = document.getElementById('video');
+            if (window.URL) {
+                video.src = window.URL.createObjectURL(stream);
+            } else {
+                video.src = stream;
+            }
+        }, function (err) {
+            log('获取摄像头失败！');
+        });
+
+        peer.on('connection', function (conn) {
+            conn.on('data', function (clientId) {
+                log('新连接：' + clientId);
+                var call = peer.call(clientId, window.stream);
+
+                call.on('close', function () {
+                    log('已关闭：' + clientId);
+                });
+            });
+        });
+    })();
+</script>
+</body>
+</html>
