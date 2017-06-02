@@ -1,0 +1,75 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<title>WebRTC TEST</title>
+	<style>
+		video {
+			object-fit: cover;
+		}
+	</style>
+</head>
+<body>
+	<video id="video" autoplay></video>
+	<div id="log"></div>
+	<script src="peer.min.js"></script>
+	<script>
+	(function() {
+		var log = function(msg) {
+			document.getElementById('log').innerHTML += msg + '<br />';
+		};
+
+		var clientId = (+new Date).toString(36) + '_' + (Math.random().toString()).split('.')[1];
+
+		var peer = new Peer(clientId, {
+			host: 'localhost',
+			port: 9003,
+			path: '/',
+			config: {
+				'iceServers': [
+	      			{ url: 'stun:stun.l.google.com:19302' }
+	    		]
+	    	}
+		});
+
+		var serverId = location.search.replace('?', '');
+
+		if(!serverId) {
+			console.log('没有找到直播信源！');
+
+			return;
+		}
+
+		var conn = peer.connect(serverId);
+
+		log('连接直播信源中...');
+		conn.on('open', function() {
+			log('请求连接（' + clientId + '）...');
+			conn.send(clientId);
+		});
+
+		peer.on('call', function(call) {
+			call.answer();
+			log('自动应答！');
+
+			call.on('stream', function(remoteStream) {
+				log('播放中...');
+				var video = document.getElementById('video');
+				if (window.URL) {
+					video.src = window.URL.createObjectURL(remoteStream);
+				} else {
+					video.src = remoteStream;
+				}
+			});
+
+			call.on('close', function() {
+				log('连接被关闭！');
+			});
+		});
+	})();
+	</script>
+<div style="margin-top:50px;"><a href="https://www.imququ.com/post/html5-live-player-3.html">返回「HTML5 视频直播（三）」</a></div>
+
+</body>
+</html>
