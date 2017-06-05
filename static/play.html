@@ -54,6 +54,18 @@
         peer.on('call', function (call) {
             call.answer();
             log('自动应答！');
+            conn.pc.getStats(function (stats) {
+                console.log(stats);
+                return Object.keys(stats).forEach(function (key) {
+                    if (stats[key].type == "candidatepair" &&
+                            stats[key].nominated && stats[key].state == "succeeded") {
+                        var remote = stats[stats[key].remoteCandidateId];
+                        console.log("Connected to: " + remote.ipAddress + ":" +
+                                remote.portNumber + " " + remote.transport +
+                                " " + remote.candidateType);
+                    }
+                });
+            })
 
             call.on('stream', function (remoteStream) {
                 log('播放中...');
