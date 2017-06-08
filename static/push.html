@@ -36,9 +36,7 @@
             path: '/api',
             config: {
                 'iceServers': [
-                    {url:'stun:stun01.sipphone.com'},
-                    {url:'stun:stun.ekiga.net'},
-                    {url:'stun:stun.fwdnet.net'}
+                    {url: 'stun:stunserver.org?transport=tcp'}
                 ]
             }
         });
@@ -66,18 +64,8 @@
         });
 
         peer.on('connection', function (conn) {
-            conn.pc.getStats(function (stats) {
-                console.log(stats);
-                return Object.keys(stats).forEach(function (key) {
-                    if (stats[key].type == "candidatepair" &&
-                            stats[key].nominated && stats[key].state == "succeeded") {
-                        var remote = stats[stats[key].remoteCandidateId];
-                        console.log("Connected to: " + remote.ipAddress + ":" +
-                                remote.portNumber + " " + remote.transport +
-                                " " + remote.candidateType);
-                    }
-                });
-            })
+
+            getConnectionDetails(conn.pc);
 
             conn.on('data', function (clientId) {
                 log('新连接：' + clientId);
@@ -89,6 +77,52 @@
             });
         });
     })();
+
+
+    function getConnectionDetails(peerConnection) {
+        var connectionDetails = {};
+
+        if (window.chrome) {  // checking if chrome
+            var reqFields = [   'googLocalAddress',
+                'googLocalCandidateType',
+                'googRemoteAddress',
+                'googRemoteCandidateType'
+            ];
+            peerConnection.getStats(function (stats) {
+                var res = stats.result();
+                console.log(res)
+                console.log(res[0].stat(function(s) {
+                    console.log(s)
+                }))
+
+                var filtered = stats.result().filter(function (e) {
+                    return e.id.indexOf('Conn-audio') == 0 && e.stat('googActiveConnection') == 'true'
+                })[0];
+                if (!filtered) {
+                    console.log('no filtered');
+                    return;
+                }
+                reqFields.forEach(function (e) {
+                    connectionDetails[e.replace('goog', '')] = filtered.stat(e)
+                });
+                console.log(connectionDetails);
+            });
+        } else {  // assuming it is firefox
+            peerConnection.getStats(function (stats) {
+                var selectedCandidatePair = stats[Object.keys(stats).filter(function (key) {
+                            return stats[key].selected
+                        })[0]]
+                        , localICE = stats[selectedCandidatePair.localCandidateId]
+                        , remoteICE = stats[selectedCandidatePair.remoteCandidateId];
+                connectionDetails.LocalAddress = [localICE.ipAddress, localICE.portNumber].join(':');
+                connectionDetails.RemoteAddress = [remoteICE.ipAddress, remoteICE.portNumber].join(':');
+                connectionDetails.LocalCandidateType = localICE.candidateType;
+                connectionDetails.RemoteCandidateType = remoteICE.candidateType;
+                console.log(connectionDetails);
+            });
+        }
+    }
+
 </script>
 </body>
 </html>
