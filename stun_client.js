@@ -1,9 +1,19 @@
 var stun = require('node-stun');
 var client = stun.createClient();
-//client.setServerAddr('120.27.32.78', 29695);
 client.setServerAddr('120.27.32.78', 3478);
-client.start({}, function() {
-    console.log(client.getMappedAddr())
-});
+client.start(function (result) {
+    var mapped = client.getMappedAddr();
+    console.log([
+        "Complete(" + result + "): ",
+        (client.isNatted()?"Natted":"Open"),
+        " NB=" + client.getNB(),
+        " EF=" + client.getEF(),
+        " (" + client.getNatType() + ")",
+        " mapped=" + mapped.address + ":" + mapped.port,
+        " rtt=" + client.getRtt()
+    ].join(''));
 
-//  iptables -I INPUT -p tcp --dport 3478 -j ACCEPT
+    client.close(function () {
+        console.log("All sockets closed.");
+    });
+});
