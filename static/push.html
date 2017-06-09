@@ -65,8 +65,6 @@
 
         peer.on('connection', function (conn) {
 
-            getConnectionDetails(conn.pc);
-
             conn.on('data', function (clientId) {
                 log('新连接：' + clientId);
                 var call = peer.call(clientId, window.stream);
@@ -77,51 +75,6 @@
             });
         });
     })();
-
-
-    function getConnectionDetails(peerConnection) {
-        var connectionDetails = {};
-
-        if (window.chrome) {  // checking if chrome
-            var reqFields = [   'googLocalAddress',
-                'googLocalCandidateType',
-                'googRemoteAddress',
-                'googRemoteCandidateType'
-            ];
-            peerConnection.getStats(function (stats) {
-                var res = stats.result();
-                console.log(res)
-                console.log(res[0].stat(function(s) {
-                    console.log(s)
-                }))
-
-                var filtered = stats.result().filter(function (e) {
-                    return e.id.indexOf('Conn-audio') == 0 && e.stat('googActiveConnection') == 'true'
-                })[0];
-                if (!filtered) {
-                    console.log('no filtered');
-                    return;
-                }
-                reqFields.forEach(function (e) {
-                    connectionDetails[e.replace('goog', '')] = filtered.stat(e)
-                });
-                console.log(connectionDetails);
-            });
-        } else {  // assuming it is firefox
-            peerConnection.getStats(function (stats) {
-                var selectedCandidatePair = stats[Object.keys(stats).filter(function (key) {
-                            return stats[key].selected
-                        })[0]]
-                        , localICE = stats[selectedCandidatePair.localCandidateId]
-                        , remoteICE = stats[selectedCandidatePair.remoteCandidateId];
-                connectionDetails.LocalAddress = [localICE.ipAddress, localICE.portNumber].join(':');
-                connectionDetails.RemoteAddress = [remoteICE.ipAddress, remoteICE.portNumber].join(':');
-                connectionDetails.LocalCandidateType = localICE.candidateType;
-                connectionDetails.RemoteCandidateType = remoteICE.candidateType;
-                console.log(connectionDetails);
-            });
-        }
-    }
 
 </script>
 </body>
