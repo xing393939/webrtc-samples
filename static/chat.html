@@ -1,7 +1,7 @@
 <html>
 <head>
     <meta charset="utf-8"/>
-    <title>主播端</title>
+    <title>视频会议</title>
     <style>
         #room_media li {display: inline-block; list-style: none; margin-right: 15px;}
     </style>
@@ -64,7 +64,7 @@
                     //conn.addStream(window.localStream)
                     var call = peer.call(conn.peer, window.localStream);
                     call.on('close', function () {
-                        delete connectedMedia[call.peer];
+                        delete connectedMedia[call.id];
                         showMedia();
                     });
 
@@ -79,11 +79,17 @@
 
             // 被动视频语音
             peer.on('call', function (call) {
+                console.log(call);
                 call.answer(window.localStream)
                 call.on('stream', function (remoteStream) {
-                    connectedMedia[call.peer] = remoteStream;
+                    remoteStream.peer = call.peer
+                    connectedMedia[call.id] = remoteStream;
                     showMedia();
                 })
+                call.on('close', function () {
+                    delete connectedMedia[call.id];
+                    showMedia();
+                });
             });
 
             //被动连接上
@@ -92,7 +98,7 @@
                 //conn.addStream(window.localStream)
                 var call = peer.call(conn.peer, window.localStream);
                 call.on('close', function () {
-                    delete connectedMedia[call.peer];
+                    delete connectedMedia[call.id];
                     showMedia();
                 });
 
@@ -124,7 +130,7 @@
             video.width = 200
             video.autoplay = true
             var li = document.createElement('li');
-            li.innerHTML = k + '<br />';
+            li.innerHTML = connectedMedia[k].peer + '<br />';
             li.appendChild(video);
             room_media.appendChild(li);
             if (window.URL) {
