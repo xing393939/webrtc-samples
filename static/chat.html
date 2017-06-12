@@ -18,10 +18,6 @@
 <script src="peer.min.js"></script>
 <script>
     navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-    navigator.getUserMedia({audio: true, video: false}, function (stream) {
-        window.localStream = stream;
-    }, function (err) {});
-
     var ids = ['user0', 'user1', 'user2', 'user3', 'user4', 'user5', 'user6', 'user7'];
     var idsTmp = ['user0', 'user1', 'user2', 'user3', 'user4', 'user5', 'user6', 'user7'];
     var connectedConn = [];
@@ -48,15 +44,41 @@
         });
     }
 
-    newPeer(function (peer) {
-        document.getElementById('role').innerHTML = peer.id;
+    navigator.getUserMedia({audio: true, video: true}, function (stream) {
+        window.localStream = stream;
 
-        ids.map(function (id) {
-            if (id == peer.id) return;
+        newPeer(function (peer) {
+            document.getElementById('role').innerHTML = peer.id;
 
-            //主动连接上
-            var conn = peer.connect(id)
-            conn.on('open', function () {
+            ids.map(function (id) {
+                if (id == peer.id) return;
+
+                //主动连接上
+                var conn = peer.connect(id)
+                conn.on('open', function () {
+                    connectedConn[conn.peer] = conn;
+                    //conn.addStream(window.localStream)
+                    var call = peer.call(conn.peer, window.localStream);
+                    conn.on('close', function() {
+                        delete connectedConn[conn.peer];
+                    })
+                    conn.on('data', function (str) {
+                        document.getElementById('room').innerHTML += '<p>' + conn.peer + ': ' + str + '</p>';
+                    })
+                })
+            })
+
+            // 被动视频语音
+            peer.on('call', function (call) {
+                call.answer(window.localStream)
+                call.on('stream', function (remoteStream) {
+                    connectedMedia[call.peer] = remoteStream;
+                    showMedia();
+                })
+            });
+
+            //被动连接上
+            peer.on('connection', function (conn) {
                 connectedConn[conn.peer] = conn;
                 //conn.addStream(window.localStream)
                 var call = peer.call(conn.peer, window.localStream);
@@ -66,41 +88,19 @@
                 conn.on('data', function (str) {
                     document.getElementById('room').innerHTML += '<p>' + conn.peer + ': ' + str + '</p>';
                 })
-            })
-        })
+            });
 
-        // 被动视频语音
-        peer.on('call', function (call) {
-            call.answer(window.localStream)
-            call.on('stream', function (remoteStream) {
-                connectedMedia[call.peer] = remoteStream;
-                showMedia();
-            })
-        });
+            document.getElementById('btn').onclick = function() {
+                var val = document.getElementById('msg').value;
+                document.getElementById('room').innerHTML += '<p>' + peer.id + ': ' + val + '</p>';
 
-        //被动连接上
-        peer.on('connection', function (conn) {
-            connectedConn[conn.peer] = conn;
-            //conn.addStream(window.localStream)
-            var call = peer.call(conn.peer, window.localStream);
-            conn.on('close', function() {
-                delete connectedConn[conn.peer];
-            })
-            conn.on('data', function (str) {
-                document.getElementById('room').innerHTML += '<p>' + conn.peer + ': ' + str + '</p>';
-            })
-        });
-
-        document.getElementById('btn').onclick = function() {
-            var val = document.getElementById('msg').value;
-            document.getElementById('room').innerHTML += '<p>' + peer.id + ': ' + val + '</p>';
-
-            console.log(connectedConn);
-            for(var k in connectedConn) {
-                connectedConn[k].send(val);
+                console.log(connectedConn);
+                for(var k in connectedConn) {
+                    connectedConn[k].send(val);
+                }
             }
-        }
-    })
+        })
+    }, function(err) {})
 
     function showMedia() {
         var room_media = document.getElementById('room_media');
