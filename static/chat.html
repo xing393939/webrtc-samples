@@ -25,6 +25,10 @@
 
     function newPeer(nextAct) {
         var id = idsTmp.shift();
+        if (!id) {
+            alert('8人房间满了');
+            return;
+        }
         var peer = new Peer(id, {
             host: '120.27.32.78',
             port: 9003,
