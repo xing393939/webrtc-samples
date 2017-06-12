@@ -59,6 +59,11 @@
                     connectedConn[conn.peer] = conn;
                     //conn.addStream(window.localStream)
                     var call = peer.call(conn.peer, window.localStream);
+                    call.on('close', function () {
+                        delete connectedMedia[call.peer];
+                        showMedia();
+                    });
+
                     conn.on('close', function() {
                         delete connectedConn[conn.peer];
                     })
@@ -82,6 +87,11 @@
                 connectedConn[conn.peer] = conn;
                 //conn.addStream(window.localStream)
                 var call = peer.call(conn.peer, window.localStream);
+                call.on('close', function () {
+                    delete connectedMedia[call.peer];
+                    showMedia();
+                });
+
                 conn.on('close', function() {
                     delete connectedConn[conn.peer];
                 })
