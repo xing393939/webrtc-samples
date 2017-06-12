@@ -1,0 +1,77 @@
+<html>
+<body>
+<script src="peer.min.js"></script>
+<script>
+    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+
+    var constraints = {
+        audio: false,
+        video: true
+    };
+
+    navigator.getUserMedia(constraints, function (stream) {
+        window.stream = stream;
+    }, function (err) {
+        log('获取摄像头失败！');
+    });
+
+    var lines = ['user0', 'user1', 'user2', 'user3', 'user4', 'user5', 'user6', 'user7'];
+    var linesTmp = ['user0', 'user1', 'user2', 'user3', 'user4', 'user5', 'user6', 'user7'];
+
+    function newPeer(nextAct) {
+        var id = linesTmp.shift();
+        var peer = new Peer(id, {
+            host: '120.27.32.78',
+            port: 9003,
+            path: '/api',
+            config: {
+                'iceServers': [
+                    {url: 'stun:120.27.32.78:3478'}
+                ]
+            }
+        });
+        peer.on('error', function (err) {
+            if (err.type == 'unavailable-id')
+                newPeer(nextAct);
+        });
+        peer.on('open', function () {
+            nextAct(peer);
+        });
+    }
+
+    newPeer(function (peer) {
+        console.log('next: ' + peer.id)
+
+        lines.map(function (id) {
+            if (id == peer.id) return;
+
+            var conn = peer.connect(id)
+            conn.on('open', function () {
+                conn.send(peer.id)
+
+            })
+        })
+
+        // 连接上了
+        peer.on('call', function (call) {
+            call.answer(window.stream)
+            call.on('stream', function (remoteStream) {
+                console.log(remoteStream)
+            })
+        });
+
+        //假如有人来连接我
+        peer.on('connection', function (conn) {
+            conn.on('data', function (clientId) {
+                console.log('新连接：' + clientId);
+                var call = peer.call(clientId, window.stream);
+
+                call.on('close', function () {
+                    log('已关闭：' + clientId);
+                });
+            })
+        });
+    })
+</script>
+</body>
+</html>
