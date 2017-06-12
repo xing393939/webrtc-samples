@@ -60,7 +60,7 @@
                 //主动连接上
                 var conn = peer.connect(id)
                 conn.on('open', function () {
-                    connectedConn[conn.peer] = conn;
+                    connectedConn[conn.id] = conn;
                     //conn.addStream(window.localStream)
                     var call = peer.call(conn.peer, window.localStream);
                     call.on('close', function () {
@@ -69,7 +69,7 @@
                     });
 
                     conn.on('close', function() {
-                        delete connectedConn[conn.peer];
+                        delete connectedConn[conn.id];
                     })
                     conn.on('data', function (str) {
                         document.getElementById('room').innerHTML += '<p>' + conn.peer + ': ' + str + '</p>';
@@ -94,7 +94,7 @@
 
             //被动连接上
             peer.on('connection', function (conn) {
-                connectedConn[conn.peer] = conn;
+                connectedConn[conn.id] = conn;
                 //conn.addStream(window.localStream)
                 var call = peer.call(conn.peer, window.localStream);
                 call.on('close', function () {
@@ -103,7 +103,7 @@
                 });
 
                 conn.on('close', function() {
-                    delete connectedConn[conn.peer];
+                    delete connectedConn[conn.id];
                 })
                 conn.on('data', function (str) {
                     document.getElementById('room').innerHTML += '<p>' + conn.peer + ': ' + str + '</p>';
