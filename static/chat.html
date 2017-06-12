@@ -1,9 +1,16 @@
 <html>
+<head>
+    <meta charset="utf-8"/>
+    <title>主播端</title>
+    <style>
+        #room_media li {display: inline-block; list-style: none; margin-right: 15px;}
+    </style>
+</head>
 <body>
 <p>
     你的角色是：<span id="role"></span>
 </p>
-<p id="room_media"></p>
+<ul id="room_media"></ul>
 <input type="text" id="msg" /> <button id="btn">发送</button>
 <br />
 <div id="room"></div>
@@ -11,8 +18,8 @@
 <script src="peer.min.js"></script>
 <script>
     navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-    navigator.getUserMedia({audio: true, video: true}, function (stream) {
-        window.stream = stream;
+    navigator.getUserMedia({audio: true, video: false}, function (stream) {
+        window.localStream = stream;
     }, function (err) {});
 
     var ids = ['user0', 'user1', 'user2', 'user3', 'user4', 'user5', 'user6', 'user7'];
@@ -51,8 +58,8 @@
             var conn = peer.connect(id)
             conn.on('open', function () {
                 connectedConn[conn.peer] = conn;
-                //conn.addStream(window.stream)
-                peer.call(conn.peer, window.stream);
+                //conn.addStream(window.localStream)
+                var call = peer.call(conn.peer, window.localStream);
                 conn.on('close', function() {
                     delete connectedConn[conn.peer];
                 })
@@ -64,7 +71,7 @@
 
         // 被动视频语音
         peer.on('call', function (call) {
-            call.answer()
+            call.answer(window.localStream)
             call.on('stream', function (remoteStream) {
                 connectedMedia[call.peer] = remoteStream;
                 showMedia();
@@ -74,8 +81,8 @@
         //被动连接上
         peer.on('connection', function (conn) {
             connectedConn[conn.peer] = conn;
-            //conn.addStream(window.stream)
-            peer.call(conn.peer, window.stream);
+            //conn.addStream(window.localStream)
+            var call = peer.call(conn.peer, window.localStream);
             conn.on('close', function() {
                 delete connectedConn[conn.peer];
             })
@@ -102,7 +109,10 @@
             var video = document.createElement('video');
             video.width = 200
             video.autoplay = true
-            room_media.appendChild(video);
+            var li = document.createElement('li');
+            li.innerHTML = k + '<br />';
+            li.appendChild(video);
+            room_media.appendChild(li);
             if (window.URL) {
                 video.src = window.URL.createObjectURL(connectedMedia[k]);
             } else {
