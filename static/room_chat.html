@@ -1,0 +1,56 @@
+<html>
+<body>
+<script src="peer.min.js"></script>
+<script>
+    var watchObj=function(obj,key,value){
+        if(typeof value === 'object'){
+            new Obseeve(value)
+        }else{
+            Object.defineProperty(obj,key,{
+                get:()=>{
+                    console.log('取值')
+                    return value;
+                },
+                set:(newVal)=>{
+                    console.log('赋值')
+                    value = newVal;
+
+                }
+            })
+        }
+    }
+
+    var lines = ['user0','user1','user2','user3','user4','user5','user6','j3o15stz_2612946124281734'];
+
+    function newPeer(nextAct) {
+        var id = lines.shift();
+        var peer = new Peer(id, {
+            host: '120.27.32.78',
+            port: 9003,
+            path: '/api',
+            config: {
+                'iceServers': [
+                    {url: 'stun:120.27.32.78:3478'}
+                ]
+            }
+        });
+        peer.on('error', function(err) {
+            newPeer(nextAct);
+        });
+        peer.on('open', function() {
+            nextAct(peer);
+        });
+    }
+
+    watchObj(peer, 'id', peer.id);
+
+    //console.log(peer);
+    console.log('->' + peer.id);
+    setTimeout(function(){
+        console.log('->' + peer.id);
+    }, 100)
+
+
+</script>
+</body>
+</html>

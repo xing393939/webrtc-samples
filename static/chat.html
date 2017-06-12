@@ -1,25 +1,25 @@
 <html>
 <body>
+<p>
+    你的角色是：<span id="role"></span>
+</p>
+<input type="text" id="msg" /><button id="btn">发送</button>
+<br />
+<div id="room"></div>
+
 <script src="peer.min.js"></script>
 <script>
     navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-
-    var constraints = {
-        audio: false,
-        video: true
-    };
-
-    navigator.getUserMedia(constraints, function (stream) {
+    navigator.getUserMedia({audio: false,video: true}, function (stream) {
         window.stream = stream;
-    }, function (err) {
-        log('获取摄像头失败！');
-    });
+    }, function (err) {});
 
-    var lines = ['user0', 'user1', 'user2', 'user3', 'user4', 'user5', 'user6', 'user7'];
-    var linesTmp = ['user0', 'user1', 'user2', 'user3', 'user4', 'user5', 'user6', 'user7'];
+    var ids = ['user0', 'user1', 'user2', 'user3', 'user4', 'user5', 'user6', 'user7'];
+    var idsTmp = ['user0', 'user1', 'user2', 'user3', 'user4', 'user5', 'user6', 'user7'];
+    var connectedConn = [];
 
     function newPeer(nextAct) {
-        var id = linesTmp.shift();
+        var id = idsTmp.shift();
         var peer = new Peer(id, {
             host: '120.27.32.78',
             port: 9003,
@@ -40,19 +40,25 @@
     }
 
     newPeer(function (peer) {
-        console.log('next: ' + peer.id)
+        document.getElementById('role').innerHTML = peer.id;
 
-        lines.map(function (id) {
+        ids.map(function (id) {
             if (id == peer.id) return;
 
+            //主动连接上
             var conn = peer.connect(id)
             conn.on('open', function () {
-                conn.send(peer.id)
-
+                connectedConn[conn.peer] = conn;
+            })
+            conn.on('close', function() {
+                delete connectedConn[conn.peer];
+            })
+            conn.on('data', function (str) {
+                document.getElementById('room').innerHTML += '<p>' + conn.peer + ': ' + str + '</p>';
             })
         })
 
-        // 连接上了
+        // 被动视频语音
         peer.on('call', function (call) {
             call.answer(window.stream)
             call.on('stream', function (remoteStream) {
@@ -60,17 +66,27 @@
             })
         });
 
-        //假如有人来连接我
+        //被动连接上
         peer.on('connection', function (conn) {
-            conn.on('data', function (clientId) {
-                console.log('新连接：' + clientId);
-                var call = peer.call(clientId, window.stream);
+            connectedConn[conn.peer] = conn;
+            conn.on('close', function() {
+                delete connectedConn[conn.peer];
+            })
 
-                call.on('close', function () {
-                    log('已关闭：' + clientId);
-                });
+            conn.on('data', function (str) {
+                document.getElementById('room').innerHTML += '<p>' + conn.peer + ': ' + str + '</p>';
             })
         });
+
+        document.getElementById('btn').onclick = function() {
+            var val = document.getElementById('msg').value;
+            document.getElementById('room').innerHTML += '<p>' + peer.id + ': ' + val + '</p>';
+
+            console.log(connectedConn);
+            for(var k in connectedConn) {
+                connectedConn[k].send(val);
+            }
+        }
     })
 </script>
 </body>
