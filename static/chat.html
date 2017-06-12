@@ -3,20 +3,22 @@
 <p>
     你的角色是：<span id="role"></span>
 </p>
-<input type="text" id="msg" /><button id="btn">发送</button>
+<p id="room_media"></p>
+<input type="text" id="msg" /> <button id="btn">发送</button>
 <br />
 <div id="room"></div>
 
 <script src="peer.min.js"></script>
 <script>
     navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-    navigator.getUserMedia({audio: false,video: true}, function (stream) {
+    navigator.getUserMedia({audio: true, video: true}, function (stream) {
         window.stream = stream;
     }, function (err) {});
 
     var ids = ['user0', 'user1', 'user2', 'user3', 'user4', 'user5', 'user6', 'user7'];
     var idsTmp = ['user0', 'user1', 'user2', 'user3', 'user4', 'user5', 'user6', 'user7'];
     var connectedConn = [];
+    var connectedMedia = [];
 
     function newPeer(nextAct) {
         var id = idsTmp.shift();
@@ -49,30 +51,34 @@
             var conn = peer.connect(id)
             conn.on('open', function () {
                 connectedConn[conn.peer] = conn;
-            })
-            conn.on('close', function() {
-                delete connectedConn[conn.peer];
-            })
-            conn.on('data', function (str) {
-                document.getElementById('room').innerHTML += '<p>' + conn.peer + ': ' + str + '</p>';
+                //conn.addStream(window.stream)
+                peer.call(conn.peer, window.stream);
+                conn.on('close', function() {
+                    delete connectedConn[conn.peer];
+                })
+                conn.on('data', function (str) {
+                    document.getElementById('room').innerHTML += '<p>' + conn.peer + ': ' + str + '</p>';
+                })
             })
         })
 
         // 被动视频语音
         peer.on('call', function (call) {
-            call.answer(window.stream)
+            call.answer()
             call.on('stream', function (remoteStream) {
-                console.log(remoteStream)
+                connectedMedia[call.peer] = remoteStream;
+                showMedia();
             })
         });
 
         //被动连接上
         peer.on('connection', function (conn) {
             connectedConn[conn.peer] = conn;
+            //conn.addStream(window.stream)
+            peer.call(conn.peer, window.stream);
             conn.on('close', function() {
                 delete connectedConn[conn.peer];
             })
-
             conn.on('data', function (str) {
                 document.getElementById('room').innerHTML += '<p>' + conn.peer + ': ' + str + '</p>';
             })
@@ -88,6 +94,22 @@
             }
         }
     })
+
+    function showMedia() {
+        var room_media = document.getElementById('room_media');
+        room_media.innerHTML = '';
+        for(var k in connectedMedia) {
+            var video = document.createElement('video');
+            video.width = 200
+            video.autoplay = true
+            room_media.appendChild(video);
+            if (window.URL) {
+                video.src = window.URL.createObjectURL(connectedMedia[k]);
+            } else {
+                video.src = connectedMedia[k];
+            }
+        }
+    }
 </script>
 </body>
 </html>
