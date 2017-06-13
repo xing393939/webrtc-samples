@@ -1,139 +1,143 @@
 <html>
 <head>
-  <title>PeerJS - Video chat example</title>
-  <link rel="stylesheet" href="style.css">
-  <script type="text/javascript" src="jquery-1.8.min.js"></script>
-  <script type="text/javascript" src="peer.min.js"></script>
-  <script>
-
-    // Compatibility shim
-    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-
-    // PeerJS object
-    var peer = new Peer({ key: 'lwjd5qra8257b9', debug: 3});
-
-    peer.on('open', function(){
-      $('#my-id').text(peer.id);
-    });
-
-    // Receiving a call
-    peer.on('call', function(call){
-      // Answer the call automatically (instead of prompting user) for demo purposes
-      call.answer(window.localStream);
-      step3(call);
-    });
-    peer.on('error', function(err){
-      alert(err.message);
-      // Return to step 2 if error occurs
-      step2();
-    });
-
-    // Click handlers setup
-    $(function(){
-      $('#make-call').click(function(){
-        // Initiate a call!
-        var call = peer.call($('#callto-id').val(), window.localStream);
-
-        step3(call);
-      });
-
-      $('#end-call').click(function(){
-        window.existingCall.close();
-        step2();
-      });
-
-      // Retry if getUserMedia fails
-      $('#step1-retry').click(function(){
-        $('#step1-error').hide();
-        step1();
-      });
-
-      // Get things started
-      step1();
-    });
-
-    function step1 () {
-      // Get audio/video stream
-      navigator.getUserMedia({audio: true, video: true}, function(stream){
-        // Set your video displays
-        $('#my-video').prop('src', URL.createObjectURL(stream));
-
-        window.localStream = stream;
-        step2();
-      }, function(){ $('#step1-error').show(); });
-    }
-
-    function step2 () {
-      $('#step1, #step3').hide();
-      $('#step2').show();
-    }
-
-    function step3 (call) {
-      // Hang up on an existing call if present
-      if (window.existingCall) {
-        window.existingCall.close();
-      }
-
-      // Wait for stream on the call, then set peer video display
-      call.on('stream', function(stream){
-        $('#their-video').prop('src', URL.createObjectURL(stream));
-      });
-
-      // UI stuff
-      window.existingCall = call;
-      $('#their-id').text(call.peer);
-      call.on('close', step2);
-      $('#step1, #step2').hide();
-      $('#step3').show();
-    }
-
-  </script>
-
-
+    <meta charset="utf-8"/>
+    <title>视频会议</title>
+    <style>
+        #room_media li {display: inline-block; list-style: none; margin-right: 15px;}
+    </style>
 </head>
-
 <body>
+<p>
+    你的角色是：<span id="role"></span>
+</p>
+<ul id="room_media"></ul>
+<input type="text" id="msg" /> <button id="btn">发送</button>
+<br />
+<div id="room"></div>
 
-  <div class="pure-g">
+<script src="peer.min.js"></script>
+<script>
+    navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
+    var ids = ['user0', 'user1', 'user2', 'user3', 'user4', 'user5', 'user6', 'user7'];
+    var idsTmp = ['user0', 'user1', 'user2', 'user3', 'user4', 'user5', 'user6', 'user7'];
+    var connectedConn = [];
+    var connectedMedia = [];
 
-      <!-- Video area -->
-      <div class="pure-u-2-3" id="video-container">
-        <video id="their-video" autoplay></video>
-        <video id="my-video" muted="true" autoplay></video>
-      </div>
+    function newPeer(nextAct) {
+        var id = idsTmp.shift();
+        if (!id) {
+            alert('8人房间满了');
+            return;
+        }
+        var peer = new Peer(id, {
+            host: '120.27.32.78',
+            port: 9003,
+            path: '/api',
+            config: {
+                'iceServers': [
+                    {url: 'stun:120.27.32.78:3478'}
+                ]
+            }
+        });
+        peer.on('error', function (err) {
+            if (err.type == 'unavailable-id')
+                newPeer(nextAct);
+        });
+        peer.on('open', function () {
+            nextAct(peer);
+        });
+    }
 
-      <!-- Steps -->
-      <div class="pure-u-1-3">
-        <h2>PeerJS Video Chat</h2>
+    navigator.getUserMedia({audio: true, video: true}, function (stream) {
+        window.localStream = stream;
 
-        <!-- Get local audio/video stream -->
-        <div id="step1">
-          <p>Please click `allow` on the top of the screen so we can access your webcam and microphone for calls.</p>
-          <div id="step1-error">
-            <p>Failed to access the webcam and microphone. Make sure to run this demo on an http server and click allow when asked for permission by the browser.</p>
-            <a href="#" class="pure-button pure-button-error" id="step1-retry">Try again</a>
-          </div>
-        </div>
+        newPeer(function (peer) {
+            document.getElementById('role').innerHTML = peer.id;
 
-        <!-- Make calls to others -->
-        <div id="step2">
-          <p>Your id: <span id="my-id">...</span></p>
-          <p>Share this id with others so they can call you.</p>
-          <h3>Make a call</h3>
-          <div class="pure-form">
-            <input type="text" placeholder="Call user id..." id="callto-id">
-            <a href="#" class="pure-button pure-button-success" id="make-call">Call</a>
-          </div>
-        </div>
+            ids.map(function (id) {
+                if (id == peer.id) return;
 
-        <!-- Call in progress -->
-        <div id="step3">
-          <p>Currently in call with <span id="their-id">...</span></p>
-          <p><a href="#" class="pure-button pure-button-error" id="end-call">End call</a></p>
-        </div>
-      </div>
-  </div>
+                //主动连接上
+                var conn = peer.connect(id)
+                conn.on('open', function () {
+                    connectedConn[conn.id] = conn;
+                    var call = peer.call(conn.peer, window.localStream);
+                    call.on('close', function () {
+                        delete connectedMedia[call.id];
+                        showMedia();
+                    });
 
+                    conn.on('close', function() {
+                        delete connectedConn[conn.id];
+                    })
+                    conn.on('data', function (str) {
+                        document.getElementById('room').innerHTML += '<p>' + conn.peer + ': ' + str + '</p>';
+                    })
+                })
+            })
 
+            // 被动视频语音
+            peer.on('call', function (call) {
+                console.log(call);
+                call.answer(window.localStream)
+                call.on('stream', function (remoteStream) {
+                    remoteStream.peer = call.peer
+                    connectedMedia[call.id] = remoteStream;
+                    showMedia();
+                })
+                call.on('close', function () {
+                    delete connectedMedia[call.id];
+                    showMedia();
+                });
+            });
+
+            //被动连接上
+            peer.on('connection', function (conn) {
+                connectedConn[conn.id] = conn;
+                var call = peer.call(conn.peer, window.localStream);
+                call.on('close', function () {
+                    delete connectedMedia[call.id];
+                    showMedia();
+                });
+
+                conn.on('close', function() {
+                    delete connectedConn[conn.id];
+                })
+                conn.on('data', function (str) {
+                    document.getElementById('room').innerHTML += '<p>' + conn.peer + ': ' + str + '</p>';
+                })
+            });
+
+            document.getElementById('btn').onclick = function() {
+                var val = document.getElementById('msg').value;
+                document.getElementById('room').innerHTML += '<p>' + peer.id + ': ' + val + '</p>';
+
+                console.log(connectedConn);
+                for(var k in connectedConn) {
+                    connectedConn[k].send(val);
+                }
+            }
+        })
+    }, function(err) {})
+
+    function showMedia() {
+        var room_media = document.getElementById('room_media');
+        room_media.innerHTML = '';
+        for(var k in connectedMedia) {
+            var video = document.createElement('video');
+            video.width = 200
+            video.autoplay = true
+            var li = document.createElement('li');
+            li.innerHTML = connectedMedia[k].peer + '<br />';
+            li.appendChild(video);
+            room_media.appendChild(li);
+            if (window.URL) {
+                video.src = window.URL.createObjectURL(connectedMedia[k]);
+            } else {
+                video.src = connectedMedia[k];
+            }
+        }
+    }
+</script>
 </body>
 </html>

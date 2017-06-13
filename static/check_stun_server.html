@@ -1,0 +1,51 @@
+<html>
+<head>
+    <meta charset="utf-8"/>
+    <title>检测STUN服务器</title>
+</head>
+<body>
+<script>
+    function checkSTUNServer(stunConfig, timeout) {
+        return new Promise(function (resolve, reject) {
+            setTimeout(function () {
+                if (promiseResolved) return;
+                resolve(false);
+                promiseResolved = true;
+            }, timeout || 5000);
+
+            var promiseResolved = false
+                    , myPeerConnection = window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection
+                    , noop = function () {};
+
+            var config = {"iceServers":[stunConfig],"iceTransportPolicy":"all","rtcpMuxPolicy":"negotiate","iceCandidatePoolSize":"0"};
+
+            pc = new myPeerConnection(config, {"optional":[{"googIPv6":true}]});
+            pc.createDataChannel("");
+            pc.createOffer(function (sdp) {
+                if (/typ (relay|srflx)/.test(sdp.sdp)) {
+                    promiseResolved = true;
+                    resolve(true);
+                }
+                pc.setLocalDescription(sdp, noop, noop);
+            }, noop);
+            pc.onicecandidate = function (ice) {
+                if (promiseResolved || !ice || !ice.candidate || !ice.candidate.candidate || !/typ (relay|srflx)/.test(ice.candidate.candidate))
+                    return;
+                console.log(ice.candidate.candidate);
+                promiseResolved = true;
+                resolve(true);
+            };
+        });
+    }
+
+    checkSTUNServer({
+        url: 'stun:120.27.32.78:3478',
+        username: 'test',
+        credential: 'test'
+    }).then(function (bool) {
+        console.log('is STUN server active? ', bool ? 'yes' : 'no');
+    }).catch(console.error.bind(console));
+
+</script>
+</body>
+</html>
