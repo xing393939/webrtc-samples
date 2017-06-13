@@ -40,13 +40,7 @@
         });
 
         navigator.getUserMedia = navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia;
-
-        var constraints = {
-            audio: false,
-            video: true
-        };
-
-        navigator.getUserMedia(constraints, function (stream) {
+        navigator.getUserMedia({audio: true, video: true}, function (stream) {
             window.stream = stream;
             log('获取摄像头成功！');
             log('主播ID（' + serverId + '）...');
