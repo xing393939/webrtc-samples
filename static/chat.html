@@ -61,7 +61,6 @@
                 var conn = peer.connect(id)
                 conn.on('open', function () {
                     connectedConn[conn.id] = conn;
-                    //conn.addStream(window.localStream)
                     var call = peer.call(conn.peer, window.localStream);
                     call.on('close', function () {
                         delete connectedMedia[call.id];
@@ -95,7 +94,6 @@
             //被动连接上
             peer.on('connection', function (conn) {
                 connectedConn[conn.id] = conn;
-                //conn.addStream(window.localStream)
                 var call = peer.call(conn.peer, window.localStream);
                 call.on('close', function () {
                     delete connectedMedia[call.id];
