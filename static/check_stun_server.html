@@ -4,7 +4,13 @@
     <title>检测STUN服务器</title>
 </head>
 <body>
+<div id="log"></div>
+
 <script>
+    var log = function (msg) {
+        document.getElementById('log').innerHTML += msg + '<br />';
+    };
+
     function checkSTUNServer(stunConfig, timeout) {
         return new Promise(function (resolve, reject) {
             setTimeout(function () {
@@ -31,7 +37,7 @@
             pc.onicecandidate = function (ice) {
                 if (promiseResolved || !ice || !ice.candidate || !ice.candidate.candidate || !/typ (relay|srflx)/.test(ice.candidate.candidate))
                     return;
-                console.log(ice.candidate.candidate);
+                log(ice.candidate.candidate);
                 promiseResolved = true;
                 resolve(true);
             };
@@ -43,7 +49,7 @@
         username: 'test',
         credential: 'test'
     }).then(function (bool) {
-        console.log('is STUN server active? ', bool ? 'yes' : 'no');
+        log('is STUN server active? ' + (bool ? 'yes' : 'no'));
     }).catch(console.error.bind(console));
 
 </script>
