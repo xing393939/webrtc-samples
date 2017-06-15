@@ -31,7 +31,9 @@
         var clientId = (+new Date).toString(36) + '_' + (Math.random().toString()).split('.')[1];
 
         var peer = new Peer(clientId, {
-            key: 'lwjd5qra8257b9',
+            host: '127.0.0.1',
+            port: 9003,
+            path: '/api',
             config: {
                 'iceServers': [
                     {url: 'stun:stun.ekiga.net'}
