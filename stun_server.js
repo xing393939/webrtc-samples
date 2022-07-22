@@ -1,10 +1,12 @@
 var stun = require('node-stun');
 var server = stun.createServer({
     primary: {
-        host: "114.215.108.80"
+        host: "192.168.2.119",
+        port: 56844,
     },
     secondary: {
-        host: "120.27.32.78"
+        host: "172.21.176.1",
+        port: 56845,
     }
 });
 
